@@ -32,3 +32,5 @@
 **/values.dev.yaml
 LICENSE
 README.md
+example_script.py
+update_model.py
