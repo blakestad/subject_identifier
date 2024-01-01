@@ -9,6 +9,7 @@ from subject_identifier.initialize_model import math_categories, tfidf_title_vec
 
 def identify_subjects(input_title=None,input_abstract=None, title_weight=0.4, abstract_weight=0.6, sum_threshold=.25):
     """
+    Takes in the title and abstract of a mathematics paper, returns the expected math subject classications for that paper.
 
     Parameters
     ----------
@@ -28,7 +29,7 @@ def identify_subjects(input_title=None,input_abstract=None, title_weight=0.4, ab
     category_classifications: DataFrame
         The category classifications and corresponding probabilities (rounded to 5 decimal places) from the model.
     """
-
+    #Initialize category classication DataFrame
     category_classifications = math_categories[['category_name']].copy()
     category_classifications['guess']=False
     category_classifications['prob']=0.0
@@ -46,7 +47,6 @@ def identify_subjects(input_title=None,input_abstract=None, title_weight=0.4, ab
             category_classifications.at[category_name,'guess']= (title_mnb[category_name].predict_proba(querry_title_tfidf)[0][1] >= threshold)
             category_classifications.at[category_name,'prob']= round(title_mnb[category_name].predict_proba(querry_title_tfidf)[0][1],5)
 
-        return category_classifications
     
     elif ((input_title == None) or (input_title == '')) and (input_abstract != None):
         querry_abstract_tfidf = tfidf_abstract_vectorizer.transform([input_abstract])
@@ -57,13 +57,28 @@ def identify_subjects(input_title=None,input_abstract=None, title_weight=0.4, ab
             category_classifications.at[category_name,'guess']= (abstract_mnb[category_name].predict_proba(querry_abstract_tfidf)[0][1] >= threshold)
             category_classifications.at[category_name,'prob']= round(abstract_mnb[category_name].predict_proba(querry_abstract_tfidf)[0][1],5)
 
-        return category_classifications
 
     else:
         querry_title_tfidf = tfidf_title_vectorizer.transform([input_title])
         querry_abstract_tfidf = tfidf_abstract_vectorizer.transform([input_abstract])
 
         def sum_predict(category_name):
+            """
+            Takes in a category name, returns the weighted sum of the predicted probabilities from both the title and abstract classifiers, as well as a guess about whether or not the paper is of the given category.
+
+            Parameters
+            ----------
+            category_name : string
+                Name of the mathematical subject category
+
+
+            Returns
+            -------
+            prob_sum: numeric
+                The weighted sum of the predicted probabilities from the title and abstract classifiers. 
+            sum_predict: boolean
+                The prediction for whether the paper is of this subjected classication, based on if prob_sum exceeds sum_threshold
+            """
 
             abstract_probability = abstract_mnb[category_name].predict_proba(querry_abstract_tfidf)[0][1]
             title_probability = title_mnb[category_name].predict_proba(querry_title_tfidf)[0][1]
@@ -78,4 +93,7 @@ def identify_subjects(input_title=None,input_abstract=None, title_weight=0.4, ab
             category_classifications.at[category_name,'guess']= sum_predict(category_name)[1]
             category_classifications.at[category_name,'prob']= round(sum_predict(category_name)[0],5)
 
-        return category_classifications
+    category_classifications.reset_index(inplace=True)
+    category_classifications_sorted = category_classifications.sort_values(by='prob',ascending=False)
+    
+    return category_classifications_sorted
